@@ -38,7 +38,7 @@ final class ImportOrdersHandlerTest extends TestCase
     public function testItImportsValidRowsAndWritesInvalidRows(): void
     {
         $pdo = $this->createDatabase();
-        $sql = new SqlStatementProvider(__DIR__ . '/../../database/sql/persistence');
+        $sql = new SqlStatementProvider(__DIR__ . '/../../database/sql', 'sqlite');
         $handler = new ImportOrdersHandler(
             new SemicolonOrderRowReader(),
             new TextInvalidRowWriter(),
@@ -58,7 +58,8 @@ final class ImportOrdersHandlerTest extends TestCase
         self::assertSame(10, $result->processed);
         self::assertSame(4, $result->imported);
         self::assertSame(6, $result->invalid);
-        $orderCount = $pdo->query((string) file_get_contents(__DIR__ . '/../../database/sql/testing/orders_count.sql'));
+        $sql = new SqlStatementProvider(__DIR__ . '/../../database/sql', 'sqlite');
+        $orderCount = $pdo->query($sql->testingOrdersCount());
 
         self::assertNotFalse($orderCount);
         self::assertSame(4, (int) $orderCount->fetchColumn());
@@ -72,7 +73,8 @@ final class ImportOrdersHandlerTest extends TestCase
     {
         $pdo = new PDO('sqlite:' . $this->databasePath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec((string) file_get_contents(__DIR__ . '/../../database/sql/schema/sqlite_schema.sql'));
+        $sql = new SqlStatementProvider(__DIR__ . '/../../database/sql', 'sqlite');
+        $pdo->exec($sql->schema());
 
         return $pdo;
     }

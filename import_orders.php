@@ -30,6 +30,7 @@ Usage:
   php import_orders.php --input=<file> --invalid=<file> [options]
 
 Required via CLI option or .env:
+  --driver    SQL dialect: sqlite, mysql, postgres. Env: DB_DRIVER
   --dsn       PDO DSN. Env: DB_DSN
   --input     Source file with rows: item_id;customer_id;comment
               Env: IMPORT_INPUT_PATH
@@ -75,6 +76,7 @@ function envString(string $key): ?string
 
 $options = getopt('', [
     'dsn:',
+    'driver:',
     'user::',
     'password::',
     'input:',
@@ -93,6 +95,7 @@ if (isset($options['help'])) {
     exit(0);
 }
 
+$driver = optionString($options, 'driver') ?? envString('DB_DRIVER') ?? 'sqlite';
 $dsn = optionString($options, 'dsn') ?? envString('DB_DSN');
 $inputPath = optionString($options, 'input') ?? envString('IMPORT_INPUT_PATH');
 $invalidPath = optionString($options, 'invalid') ?? envString('IMPORT_INVALID_PATH');
@@ -116,7 +119,7 @@ try {
         ]
     );
 
-    $sql = new SqlStatementProvider(__DIR__ . '/database/sql/persistence');
+    $sql = new SqlStatementProvider(__DIR__ . '/database/sql', $driver);
 
     $handler = new ImportOrdersHandler(
         new SemicolonOrderRowReader(),

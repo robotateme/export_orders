@@ -107,6 +107,7 @@ cp .env.example .env
 Поля:
 
 - `DB_DSN` - PDO DSN для подключения к базе.
+- `DB_DRIVER` - SQL-диалект: `sqlite`, `mysql` или `postgres`.
 - `DB_USER` - пользователь БД, если нужен.
 - `DB_PASSWORD` - пароль БД, если нужен.
 - `IMPORT_INPUT_PATH` - путь к входному файлу заказов.
@@ -117,6 +118,7 @@ cp .env.example .env
 Пример для SQLite:
 
 ```dotenv
+DB_DRIVER=sqlite
 DB_DSN=sqlite:/absolute/path/to/tests/shop.sqlite
 DB_USER=
 DB_PASSWORD=
@@ -129,6 +131,7 @@ IMPORT_ORDER_DATE=2026-06-09
 Пример для MySQL:
 
 ```dotenv
+DB_DRIVER=mysql
 DB_DSN=mysql:host=127.0.0.1;dbname=shop;charset=utf8mb4
 DB_USER=shop_user
 DB_PASSWORD=secret
@@ -138,8 +141,22 @@ IMPORT_STATUS=new
 IMPORT_ORDER_DATE=
 ```
 
-Параметры командной строки имеют приоритет над `.env`. Например `--dsn` перекроет
-`DB_DSN`, а `--input` перекроет `IMPORT_INPUT_PATH`.
+Пример для PostgreSQL:
+
+```dotenv
+DB_DRIVER=postgres
+DB_DSN=pgsql:host=127.0.0.1;dbname=shop
+DB_USER=shop_user
+DB_PASSWORD=secret
+IMPORT_INPUT_PATH=data/orders_input.txt
+IMPORT_INVALID_PATH=data/invalid_orders.txt
+IMPORT_STATUS=new
+IMPORT_ORDER_DATE=
+```
+
+Параметры командной строки имеют приоритет над `.env`. Например `--driver`
+перекроет `DB_DRIVER`, `--dsn` перекроет `DB_DSN`, а `--input` перекроет
+`IMPORT_INPUT_PATH`.
 
 ## Как запустить импорт
 
@@ -147,6 +164,7 @@ IMPORT_ORDER_DATE=
 
 ```bash
 php8.4 import_orders.php \
+  --driver="mysql" \
   --dsn="mysql:host=127.0.0.1;dbname=shop;charset=utf8mb4" \
   --user="shop_user" \
   --password="secret" \
@@ -162,6 +180,7 @@ php8.4 import_orders.php
 
 Что означают параметры:
 
+- `--driver` - SQL-диалект: `sqlite`, `mysql` или `postgres`.
 - `--dsn` - строка подключения PDO.
 - `--user` - пользователь БД, если нужен.
 - `--password` - пароль БД, если нужен.
@@ -208,7 +227,7 @@ php8.4 import_orders.php
 Создать тестовую SQLite-базу:
 
 ```bash
-php8.4 -r '$db = new PDO("sqlite:" . __DIR__ . "/tests/shop.sqlite"); $db->exec(file_get_contents(__DIR__ . "/database/sql/schema/sqlite_schema.sql"));'
+php8.4 -r '$db = new PDO("sqlite:" . __DIR__ . "/tests/shop.sqlite"); $db->exec(file_get_contents(__DIR__ . "/database/sql/sqlite/schema/schema.sql"));'
 ```
 
 Запустить импорт:
@@ -216,6 +235,7 @@ php8.4 -r '$db = new PDO("sqlite:" . __DIR__ . "/tests/shop.sqlite"); $db->exec(
 ```bash
 php8.4 import_orders.php \
   --dsn="sqlite:$(pwd)/tests/shop.sqlite" \
+  --driver="sqlite" \
   --input="data/orders_input.txt" \
   --invalid="data/invalid_orders.txt" \
   --date="2026-06-09"
@@ -307,6 +327,12 @@ make check
 - `make smoke` - полный локальный smoke-test.
 - `make clean` - удалить локальные runtime-файлы.
 
+Для SQLite smoke-test можно переопределить путь к базе:
+
+```bash
+make smoke SQLITE_DB=tests/custom.sqlite
+```
+
 ## Архитектура
 
 Проект сделан в стиле DDD/CQRS/Hexagonal, но без лишнего фреймворка.
@@ -328,17 +354,19 @@ make check
 - `Infrastructure` отвечает за технические детали: файлы, PDO, чтение SQL-скриптов.
 - SQL лежит отдельно, чтобы PHP-код не смешивался с SQL-текстом.
 
-Если нужно поменять SQL под другую СУБД, меняются файлы в `database/sql`, а не
-код репозиториев.
+Если нужно поменять SQL под другую СУБД, меняются файлы в соответствующей
+директории `database/sql/{driver}`, а не код репозиториев.
 
 ## Где SQL
 
 Файлы:
 
-- `database/sql/schema/sqlite_schema.sql` - тестовая SQLite-схема.
-- `database/sql/queries/orders_read_queries.sql` - запросы из пункта 2.
-- `database/sql/indexes/orders_indexes.sql` - индексы и объяснения.
-- `database/sql/persistence/*.sql` - SQL для PDO-репозиториев.
+- `database/sql/sqlite/schema/schema.sql` - SQLite-схема для локальной проверки.
+- `database/sql/sqlite/queries/orders_read_queries.sql` - SQLite-запросы из пункта 2.
+- `database/sql/sqlite/indexes/orders_indexes.sql` - SQLite-индексы и объяснения.
+- `database/sql/sqlite/persistence/*.sql` - SQLite SQL для PDO-репозиториев.
+- `database/sql/mysql/*` - MySQL-варианты схемы, запросов, индексов и persistence SQL.
+- `database/sql/postgres/*` - PostgreSQL-варианты схемы, запросов, индексов и persistence SQL.
 
 Цена хранится в минимальных денежных единицах. У товара есть текущая цена
 `merchandise.price`, а в заказ пишется snapshot этой цены в `orders.price`.
@@ -347,10 +375,10 @@ make check
 
 Что где смотреть:
 
-- Для проверки структуры таблиц открыть `database/sql/schema/sqlite_schema.sql`.
-- Для проверки ответов на пункт 2 открыть `database/sql/queries/orders_read_queries.sql`.
-- Для проверки индексов и обоснований открыть `database/sql/indexes/orders_indexes.sql`.
-- Для SQL, который используют PDO-репозитории, открыть `database/sql/persistence`.
+- Для проверки структуры таблиц открыть `database/sql/{driver}/schema/schema.sql`.
+- Для проверки ответов на пункт 2 открыть `database/sql/{driver}/queries/orders_read_queries.sql`.
+- Для проверки индексов и обоснований открыть `database/sql/{driver}/indexes/orders_indexes.sql`.
+- Для SQL, который используют PDO-репозитории, открыть `database/sql/{driver}/persistence`.
 
 ## Схема
 
@@ -369,7 +397,7 @@ make check
 
 ## Индексы
 
-Индексы лежат в `database/sql/indexes/orders_indexes.sql`.
+Индексы лежат в `database/sql/{driver}/indexes/orders_indexes.sql`.
 
 - `idx_orders_customer_date ON orders (customer_id, order_date)` нужен для поиска клиентов без заказов за последние 7 дней.
 - `idx_orders_customer_date` также помогает группировке заказов по клиенту в запросе топ-5 по количеству заказов.

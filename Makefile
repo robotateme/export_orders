@@ -1,6 +1,7 @@
 PHP ?= php8.4
 COMPOSER ?= $(shell command -v composer)
 SQLITE_DB ?= tests/shop.sqlite
+DB_DRIVER ?= sqlite
 IMPORT_INPUT ?= data/orders_input.txt
 IMPORT_INVALID ?= data/invalid_orders.txt
 IMPORT_DATE ?= 2026-06-09
@@ -18,6 +19,7 @@ help:
 	@printf '%s\n' '  make sqlite-setup  Recreate local SQLite database'
 	@printf '%s\n' '  make import-sqlite Import test data into local SQLite database'
 	@printf '%s\n' '  make smoke         Recreate SQLite DB, import data, compare invalid rows'
+	@printf '%s\n' '                    Variables: SQLITE_DB, IMPORT_INPUT, IMPORT_INVALID, IMPORT_DATE'
 	@printf '%s\n' '  make clean         Remove generated local runtime files'
 
 install:
@@ -32,9 +34,10 @@ analyse:
 check: test analyse
 
 sqlite-setup:
-	$(PHP) -r '$$db = new PDO("sqlite:" . __DIR__ . "/$(SQLITE_DB)"); $$db->exec(file_get_contents(__DIR__ . "/database/sql/schema/sqlite_schema.sql"));'
+	$(PHP) -r '$$db = new PDO("sqlite:" . __DIR__ . "/$(SQLITE_DB)"); $$db->exec(file_get_contents(__DIR__ . "/database/sql/sqlite/schema/schema.sql"));'
 
 import-sqlite:
+	DB_DRIVER="$(DB_DRIVER)" \
 	DB_DSN="sqlite:$(CURDIR)/$(SQLITE_DB)" \
 	IMPORT_INPUT_PATH="$(IMPORT_INPUT)" \
 	IMPORT_INVALID_PATH="$(IMPORT_INVALID)" \
