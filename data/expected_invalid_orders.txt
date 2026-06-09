@@ -1,0 +1,6 @@
+abc;1;Invalid item id
+4;1;Unknown item
+1;99;Unknown client
+2;2
+2;2;Unquoted semicolon in comment;invalid
+0;1;Zero item id
