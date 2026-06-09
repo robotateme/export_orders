@@ -11,9 +11,14 @@ use ExportOrders\Infrastructure\Persistence\PdoClientRepository;
 use ExportOrders\Infrastructure\Persistence\PdoMerchandiseRepository;
 use ExportOrders\Infrastructure\Persistence\PdoOrderRepository;
 use ExportOrders\Infrastructure\Persistence\SqlStatementProvider;
+use Dotenv\Dotenv;
 
 $composerAutoload = __DIR__ . '/vendor/autoload.php';
 require is_file($composerAutoload) ? $composerAutoload : __DIR__ . '/src/Shared/autoload.php';
+
+if (class_exists(Dotenv::class)) {
+    Dotenv::createImmutable(__DIR__)->safeLoad();
+}
 
 const EXIT_USAGE = 2;
 const EXIT_RUNTIME = 1;
@@ -22,19 +27,20 @@ function usage(): string
 {
     return <<<TEXT
 Usage:
-  php import_orders.php --dsn=<pdo-dsn> --input=<file> --invalid=<file> [options]
+  php import_orders.php --input=<file> --invalid=<file> [options]
 
-Required:
-  --dsn       PDO DSN, for example "mysql:host=127.0.0.1;dbname=shop;charset=utf8mb4"
-              or "sqlite:/absolute/path/shop.sqlite"
+Required via CLI option or .env:
+  --dsn       PDO DSN. Env: DB_DSN
   --input     Source file with rows: item_id;customer_id;comment
+              Env: IMPORT_INPUT_PATH
   --invalid   Destination file for invalid source rows
+              Env: IMPORT_INVALID_PATH
 
 Options:
-  --user      Database user
-  --password  Database password
-  --status    Order status for imported rows, default: new
-  --date      Order date in YYYY-MM-DD format, default: today
+  --user      Database user. Env: DB_USER
+  --password  Database password. Env: DB_PASSWORD
+  --status    Order status for imported rows, default: new. Env: IMPORT_STATUS
+  --date      Order date in YYYY-MM-DD format, default: today. Env: IMPORT_ORDER_DATE
   --help      Show this help
 
 TEXT;
@@ -54,6 +60,17 @@ function optionString(array $options, string $key): ?string
     $value = $options[$key] ?? null;
 
     return is_string($value) ? $value : null;
+}
+
+function envString(string $key): ?string
+{
+    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+    if (!is_string($value) || $value === '') {
+        return null;
+    }
+
+    return $value;
 }
 
 $options = getopt('', [
@@ -76,13 +93,13 @@ if (isset($options['help'])) {
     exit(0);
 }
 
-$dsn = optionString($options, 'dsn');
-$inputPath = optionString($options, 'input');
-$invalidPath = optionString($options, 'invalid');
-$user = optionString($options, 'user');
-$password = optionString($options, 'password');
-$status = optionString($options, 'status') ?? 'new';
-$orderDate = optionString($options, 'date') ?? date('Y-m-d');
+$dsn = optionString($options, 'dsn') ?? envString('DB_DSN');
+$inputPath = optionString($options, 'input') ?? envString('IMPORT_INPUT_PATH');
+$invalidPath = optionString($options, 'invalid') ?? envString('IMPORT_INVALID_PATH');
+$user = optionString($options, 'user') ?? envString('DB_USER');
+$password = optionString($options, 'password') ?? envString('DB_PASSWORD');
+$status = optionString($options, 'status') ?? envString('IMPORT_STATUS') ?? 'new';
+$orderDate = optionString($options, 'date') ?? envString('IMPORT_ORDER_DATE') ?? date('Y-m-d');
 
 if ($dsn === null || $inputPath === null || $invalidPath === null) {
     fail(usage(), EXIT_USAGE);

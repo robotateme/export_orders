@@ -81,6 +81,57 @@ php8.4 $(command -v composer) install
 Если `composer install` не запускать, тесты и статический анализ работать не
 будут, потому что зависимости лежат в `vendor`.
 
+Можно короче:
+
+```bash
+make install
+```
+
+## Настройка `.env`
+
+Подключение к БД можно задать через `.env`. Для старта скопировать пример:
+
+```bash
+cp .env.example .env
+```
+
+Поля:
+
+- `DB_DSN` - PDO DSN для подключения к базе.
+- `DB_USER` - пользователь БД, если нужен.
+- `DB_PASSWORD` - пароль БД, если нужен.
+- `IMPORT_INPUT_PATH` - путь к входному файлу заказов.
+- `IMPORT_INVALID_PATH` - путь к файлу для невалидных строк.
+- `IMPORT_STATUS` - статус создаваемых заказов, обычно `new`.
+- `IMPORT_ORDER_DATE` - дата заказа; если пусто, используется текущая дата.
+
+Пример для SQLite:
+
+```dotenv
+DB_DSN=sqlite:/absolute/path/to/tests/shop.sqlite
+DB_USER=
+DB_PASSWORD=
+IMPORT_INPUT_PATH=data/orders_input.txt
+IMPORT_INVALID_PATH=data/invalid_orders.txt
+IMPORT_STATUS=new
+IMPORT_ORDER_DATE=2026-06-09
+```
+
+Пример для MySQL:
+
+```dotenv
+DB_DSN=mysql:host=127.0.0.1;dbname=shop;charset=utf8mb4
+DB_USER=shop_user
+DB_PASSWORD=secret
+IMPORT_INPUT_PATH=data/orders_input.txt
+IMPORT_INVALID_PATH=data/invalid_orders.txt
+IMPORT_STATUS=new
+IMPORT_ORDER_DATE=
+```
+
+Параметры командной строки имеют приоритет над `.env`. Например `--dsn` перекроет
+`DB_DSN`, а `--input` перекроет `IMPORT_INPUT_PATH`.
+
 ## Как запустить импорт
 
 Пример для MySQL:
@@ -92,6 +143,12 @@ php8.4 import_orders.php \
   --password="secret" \
   --input="data/orders_input.txt" \
   --invalid="data/invalid_orders.txt"
+```
+
+Если `.env` заполнен, можно запускать короче:
+
+```bash
+php8.4 import_orders.php
 ```
 
 Что означают параметры:
@@ -181,6 +238,15 @@ diff -u data/expected_invalid_orders.txt data/invalid_orders.txt
 30000
 ```
 
+Самый короткий вариант локальной проверки:
+
+```bash
+make smoke
+```
+
+Эта команда создаст SQLite-базу, запустит импорт и сравнит файл невалидных строк
+с эталоном.
+
 ## Проверки для разработки
 
 Запустить тесты:
@@ -189,10 +255,22 @@ diff -u data/expected_invalid_orders.txt data/invalid_orders.txt
 php8.4 $(command -v composer) test
 ```
 
+Или:
+
+```bash
+make test
+```
+
 Запустить PHPStan:
 
 ```bash
 php8.4 $(command -v composer) analyse
+```
+
+Или:
+
+```bash
+make analyse
 ```
 
 PHPStan настроен на level 8.
@@ -202,6 +280,23 @@ PHPStan настроен на level 8.
 ```bash
 php8.4 $(command -v composer) check
 ```
+
+Или:
+
+```bash
+make check
+```
+
+Полезные Makefile-команды:
+
+- `make install` - установить Composer-зависимости.
+- `make test` - запустить PHPUnit.
+- `make analyse` - запустить PHPStan level 8.
+- `make check` - запустить тесты и PHPStan.
+- `make sqlite-setup` - пересоздать тестовую SQLite-базу.
+- `make import-sqlite` - импортировать тестовые данные в SQLite.
+- `make smoke` - полный локальный smoke-test.
+- `make clean` - удалить локальные runtime-файлы.
 
 ## Архитектура
 
