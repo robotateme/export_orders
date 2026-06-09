@@ -8,6 +8,15 @@
 
 SQL-скрипты лежат отдельно в `database/sql`.
 
+GitHub:
+
+- Репозиторий: `https://github.com/robotateme/export_orders`.
+- Архив текущей ветки `main`: `https://github.com/robotateme/export_orders/archive/refs/heads/main.zip`.
+
+Локальный файл `export_orders_solution.zip` не коммитится. Для GitHub правильнее
+использовать архив ветки `main`: он собирается из tracked-файлов и не тянет
+`vendor`, `.idea`, временную SQLite-базу и другие локальные файлы.
+
 ## Исходное задание
 
 Есть база данных для хранения информации о клиентах, товарах и заказах со
